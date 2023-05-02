@@ -6,6 +6,7 @@ import "@openzeppelin/contracts@4.8.0/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts@4.8.0/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts@4.8.0/access/Ownable.sol";
 import "@openzeppelin/contracts@4.8.0/utils/Counters.sol";
+import "@openzeppelin/contracts@4.8.0/utils/Strings.sol";
 
 /// @title 時間で成長する NFT
 /// @dev time-based を使う
@@ -47,6 +48,24 @@ contract TimeGrowStagedNFT is ERC721, ERC721URIStorage, Ownable {
         emit UpdateTokenURI(msg.sender, tokenId, startFile);
         // tokenId 毎に成長ステップを記録
         tokenStage[tokenId] = firstStage;
+    }
+
+    /// @dev 成長できる余地があれば tokenURI を変更し Event を発行
+    function growNFT(uint targetId_) public {
+        // 今の stage
+        Stages curStage = tokenStage[targetId_];
+        // 次の stage を設定（整数値に型変換）
+        uint nextStage = uint(curStage) + 1;
+        // Enum で指定している範囲を超えなければ tokenURI を変更し Event を発行
+        require(nextStage <= uint(type(Stages).max), "Over stage");
+        // metaFile の決定
+        string memory metaFile = string.concat("metadata", Strings.toString(nextStage + 1), ".json");
+        // tokenURI を変更
+        _setTokenURI(targetId_, metaFile);
+        // Stage の登録変更
+        tokenStage[targetId_] = Stages(nextStage);
+        // Event 発行
+        emit UpdateTokenURI(msg.sender, targetId_, metaFile);
     }
 
     /// @dev metadata 用の baseURI を設定する
