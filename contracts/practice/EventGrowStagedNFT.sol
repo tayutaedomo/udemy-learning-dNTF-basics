@@ -75,7 +75,22 @@ contract EventGrowStagedNFT is ERC721, ERC721URIStorage, Ownable, AutomationComp
         }
     }
 
-    function performUpkeep(bytes calldata performData) external {}
+    function performUpkeep(bytes calldata performData) external {
+        (uint targetId, uint nextStage) = abi.decode(performData, (uint, uint));
+
+        // tokenId の存在チェック
+        require(_exists(targetId), "Non-existent tokenId");
+        // 次の Stage を格納する uint 型変数
+        uint vNextStage = uint(tokenStage[targetId]) + 1;
+
+        if ((block.timestamp - lastTimeStamp) >= interval
+            && nextStage == vNextStage
+            && nextStage <= uint(type(Stages).max)
+        ) {
+            lastTimeStamp = block.timestamp;
+            _growNFT(targetId, nextStage);
+        }
+    }
 
     /// @dev NFT を mint、初期 stage と URI は固定
     function ntfMint() public onlyOwner {
@@ -94,19 +109,13 @@ contract EventGrowStagedNFT is ERC721, ERC721URIStorage, Ownable, AutomationComp
     }
 
     /// @dev 成長できる余地があれば tokenURI を変更し Event を発行
-    function growNFT(uint targetId_) public {
-        // 今の stage
-        Stages curStage = tokenStage[targetId_];
-        // 次の stage を設定（整数値に型変換）
-        uint nextStage = uint(curStage) + 1;
-        // Enum で指定している範囲を超えなければ tokenURI を変更し Event を発行
-        require(nextStage <= uint(type(Stages).max), "Over stage");
+    function _growNFT(uint targetId_, uint nextStage_) internal {
         // metaFile の決定
-        string memory metaFile = string.concat("metadata", Strings.toString(nextStage + 1), ".json");
+        string memory metaFile = string.concat("metadata", Strings.toString(nextStage_ + 1), ".json");
         // tokenURI を変更
         _setTokenURI(targetId_, metaFile);
         // Stage の登録変更
-        tokenStage[targetId_] = Stages(nextStage);
+        tokenStage[targetId_] = Stages(nextStage_);
         // Event 発行
         emit UpdateTokenURI(msg.sender, targetId_, metaFile);
     }
