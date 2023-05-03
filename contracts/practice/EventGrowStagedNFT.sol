@@ -53,6 +53,7 @@ contract EventGrowStagedNFT is ERC721, ERC721URIStorage, Ownable, AutomationComp
     function checkUpkeep(bytes calldata checkData)
         external 
         view 
+        // cannotExecute // 実際に使用する場合はコメントアウトを外してオンチェーンでのみの実行にする
         returns (bool upkeepNeeded, bytes memory performData)
     {
         // decode して対象の tokenId を取得
