@@ -110,6 +110,11 @@ contract AutoWeatherInfo is ChainlinkClient {
      * @param _link the LINK token address.
      * @param _oracle the Operator.sol contract address.
      */
+    // Polygon Mumbai Testnet
+    // Constructorに渡すアドレス
+    // _LINK(LINK Token Address): 0x326C977E6efc84E512bB9C30f76E30c160eD06FB
+    // 以下、External Adapterの不具合が発生していたため、対応として独自構築したアドレスに変更
+    // _ORACLE(Operator Address): 0x180ad6758CB9AEe034A298aE7a2C9EB77eC4ae84
     constructor(address _link, address _oracle) {
         setChainlinkToken(_link);
         setChainlinkOracle(_oracle);
@@ -127,6 +132,11 @@ contract AutoWeatherInfo is ChainlinkClient {
      * @param _locationKey the location ID.
      * @param _units the measurement system ("metric" or "imperial").
      */
+    // requestCurrentConditionsファンクションに渡すパラメータ
+    // _specId( JobIDs as Bytes32):current-conditions ->  0x3065663665363038383065323463623639636239396131636164373666313561
+    // _payment(0.1LINK => 10^17 Juels): 100000000000000000
+    // _locationKey(日本を示すlocationID) : 226396
+    //  _units: metric
     function requestCurrentConditions(
         bytes32 _specId,
         uint256 _payment,
