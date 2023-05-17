@@ -163,7 +163,7 @@ contract DynamicWeatherNFT is ERC721, ERC721URIStorage, Ownable, AutomationCompa
             // lastTimeStamp ｗ現在のタイムスタンプに更新
             lastTimeStamp = block.timestamp;
             // TODO: NFT を更新
-            // _updateNFT(targetId, weatherInfoRequestId);
+            _updateNFT(targetId, weatherInfoRequestId);
         }
     }
 
@@ -179,8 +179,96 @@ contract DynamicWeatherNFT is ERC721, ERC721URIStorage, Ownable, AutomationCompa
         _setTokenURI(tokenId, startFile);
         // Event 発行
         emit UpdateTokenURI(msg.sender, tokenId, startFile);
-        // tokenId 毎に成長ステップを記録
-        // tokenStage[tokenId] = firstStage;
+    }
+
+    /// @dev tokenURI を変更し、Event 発行
+    function _updateNFT(uint _targetId, bytes32 _requestId) internal {
+        // metadata を生成
+        string memory uri = generateMetaData(_targetId, _requestId);
+        // tokenId を変更
+        _setTokenURI(_targetId, uri);
+        // NFT の update 回数を increment
+        _updatedNFTCounter.increment();
+        // NFT の update 回数を更新
+        curUpdateCount = _updatedNFTCounter.current();
+        // Event 発行
+        emit UpdateTokenURI(msg.sender, _targetId, uri);
+    }
+
+    /// @dev metadata を生成する
+    function generateMetaData(uint _targetId, bytes32 _requestId) public view returns (string memory) {
+        CurrentConditionsResult memory condition = requestIdCurrentConditionsResult[_requestId];
+
+        // struct CurrentConditionsResult {
+        //     uint256 timestamp;
+        //     uint24 precipitationPast12Hours;
+        //     uint24 precipitationPast24Hours;
+        //     uint24 precipitationPastHour;
+        //     uint24 pressure;
+        //     int16 temperature;
+        //     uint16 windDirectionDegrees;
+        //     uint16 windSpeed;
+        //     uint8 precipitationType;
+        //     uint8 relativeHumidity;
+        //     uint8 uvIndex;
+        //     uint8 weatherIcon;
+        // }
+
+        // 気温は int16 でマイナスがあり得るため、string 型に変換するための対応
+        // uint 系の型は、string 型に変換可能だが、int 系の型は変換できないので工夫が必要
+        string memory sTemp;
+        // マイナスの気温だったら・・・
+        if (condition.temperature < 0) {
+            uint16 uTemp = uint16(-condition.temperature);
+            sTemp = string.concat('-', Strings.toString(uTemp));
+        } else {
+            // 0 度以上の気温だったらそのまま string 型に型変換できる
+            sTemp = Strings.toString(uint16(condition.temperature));
+        }
+
+        bytes memory metaData = abi.encodePacked(
+            '{',
+            '"name": "DynamicWeatherNFT # ',
+            Strings.toString(_targetId),
+            '",',
+            '"description": "Dynamic Weather NFT!"',
+            ',',
+            '"image": "',
+            getImageURI(condition.precipitationType),
+            '",',
+            '"attributes": [',
+                '{',
+                '"trait_type": "timestamp",',
+                '"value": ',
+                Strings.toString(condition.timestamp),
+                '},'
+                '{',
+                '"trait_type": "pressure",',
+                '"value": ',
+                Strings.toString(condition.pressure),
+                '},'
+                '{',
+                '"trait_type": "temperature",',
+                '"value": ',
+                sTemp,
+                '},'
+                '{',
+                '"trait_type": "windSpeed",',
+                '"value": ',
+                Strings.toString(condition.windSpeed),
+                '}'
+            ']'
+            '}'
+        );
+ 
+        string memory uri = string.concat("data:application/json;base64,",Base64.encode(metaData));
+        return uri;
+    }
+
+    /// @dev imageURI の取得
+    function getImageURI(uint8 precipitationType_) public pure returns (string memory) {
+        string memory baseURI = "ipfs://bafybeiemg4yvdhl27lsctiae7yui5weu2jgvs3gmxr7w4v4yd6gqf7pq2q";
+        return string.concat(baseURI, '/image', Strings.toString(precipitationType_), '.jpg');
     }
 
     /// @dev 天気情報を登録
